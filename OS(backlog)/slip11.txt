@@ -1,0 +1,224 @@
+Slip11
+1)
+/*Program for LFU Page replacement simulation*/
+#include<stdio.h>
+
+struct node
+{
+  int pno,freq;
+}frames[20];
+int n;
+
+int page_found(int pno)
+{
+  int fno;
+  for(fno=0;fno<n;fno++)
+	if(frames[fno].pno==pno)
+	   return fno;
+	return -1;
+}
+
+int get_free_frame()
+{  int fno;
+  for (fno=0; fno<=n; fno++)
+	if (frames[fno].pno==-1)
+		return(fno);
+   return(-1);
+}
+
+int get_lfu_frame()
+{
+  int fno;
+  int selfno=0;
+  for (fno=1; fno<n; fno++)
+	if(frames[fno].freq<frames[selfno].freq)
+	selfno=fno;
+  return selfno;
+}
+int main()
+{
+   int p_request[]={3,4,5,6,3,4,7,3,4,5,6,7,2,4,6};
+   int size=12;
+   int page_falts=0,i,j,fno;
+   
+   printf("\nHow many frames:");  scanf("%d",&n);
+   //initialize frames
+   for (i=0; i<n; i++)
+   { frames[i].pno=-1;
+	 frames[i].freq=0;
+   }
+
+   printf("\nPageNo     Page Frames          	Page Fault");
+   printf("\n---------------------------------------------------");
+   for(i=0;i<size;i++)
+   {
+	 j=page_found(p_request[i]);
+	 if(j==-1)  //page fault occurs
+	 {
+	   j=get_free_frame();
+	   if (j==-1) //no free frame - do page replacement
+		 j=get_lfu_frame();
+	   page_falts++;
+	   frames[j].pno=p_request[i];
+	   frames[j].freq=1;
+	   printf("\n%4d\t ",p_request[i]);
+	   for (fno=0; fno<n; fno++)
+		 printf("%4d:%2d",frames[fno].pno,frames[fno].freq);
+	   printf(" : YES");
+	 }
+	else //page found in frame j
+	{
+	   printf("\n%4d\t ",p_request[i]);
+	   frames[j].freq++;
+	   for (fno=0; fno<n; fno++)
+		 printf("%4d:%2d",frames[fno].pno,frames[fno].freq);
+	   printf(" : NO");
+	}
+   }
+  printf("\n-------------------------------------------------------");
+  printf("\n Number of Page_Falts=%d",page_falts);
+ // getch();
+}
+
+2)
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <dirent.h>
+//#include <bfd.h>
+char comm[100],*ptr;
+char *args[10];
+int tot_arg;
+
+int list( char option, char dirname[]);
+
+main()
+{
+	do
+	{
+		printf("myshell $ ");
+		getcomm();
+		sep_arg();
+		take_action();
+	}while(1);
+} // main
+
+sep_arg()
+{
+	int i,j;
+	i = j = tot_arg = 0;
+
+	args[tot_arg] = (char*)malloc(sizeof(char) * 20);
+	for(i=0; comm[i] !='\0' ; i++)
+	{
+		if( comm[i] == ' ')
+		{
+			args[tot_arg][j] = '\0';
+			tot_arg++;
+			args[tot_arg] = (char*)malloc(sizeof(char) * 20);	
+			j=0;
+		}
+		else
+		{
+			args[tot_arg][j] =comm[i];
+			j++;
+		}
+	} // while
+	args[tot_arg][j] = '\0'; // complete last word
+ 	return;
+}
+
+getcomm()
+{
+	int len;
+	ptr = fgets(comm,80,stdin);
+	len = strlen(comm);
+	comm[len-1] = '\0';
+	return;
+} // getcomm
+
+take_action()
+{
+	char str[100];
+	pid_t   pid;
+	int status;
+
+	if(strcmp(args[0],"list") == 0 )
+		list(*args[1],args[2]);
+	else
+	{	
+		if( ptr == NULL )
+			exit(0);
+		if ( strlen(comm) <= 1 )
+			return;
+		if( ( pid = fork() ) < 0 )
+		{
+			printf("\nUnable to create process");
+		}
+		else
+		if(  pid == 0 ) // child
+		{   sscanf(comm,"%s",comm);
+			execvp(comm,args);
+			strcpy(str,"./");
+			strcat(str,args[0]);
+			execvp(str,args);
+			printf("\n%s : command not found",comm);
+			exit(0);
+		}
+		else //parent
+		 waitpid(pid,&status,0);
+	} // else
+}// take action 
+
+int list( char option, char dirname[])
+{
+	DIR *dp;
+	struct dirent *dent;
+	struct stat buff;
+	char orgdir[100];
+	int cnt,reply;
+	getcwd(orgdir,90);
+	chdir(dirname);
+	switch(option)
+	{
+	    case 'f' : // list all dir entries
+			dp= opendir(".");
+			if( dp == NULL )
+			{
+				printf("\nUnable to open dir");
+				exit(0);
+			}
+			dent = readdir(dp);
+			while( dent != NULL )
+			{
+				printf("\n%s",dent->d_name);
+				dent= readdir(dp);
+			}
+			printf("\n");
+			break;
+	    case 'n' : // list number all dir entries
+			cnt =0;
+			dp= opendir(".");
+			if( dp == NULL )
+			{
+				printf("\nUnable to open dir");
+				exit(0);
+			}
+			dent = readdir(dp);
+			while( dent != NULL )
+			{
+				cnt++;
+				dent= readdir(dp);
+			}
+			printf("\ntot dir entries = %d\n",cnt);
+			closedir(dp);
+			break;
+	    default :	printf("\nInvalid option");
+			exit(0);
+	} // switch
+	chdir(orgdir);
+	return(0);
+}// main

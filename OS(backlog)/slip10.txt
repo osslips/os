@@ -1,0 +1,185 @@
+Slip10
+1)
+/*Program for FIFO*/
+#include<stdio.h>
+
+int frame[3]={-1,-1,-1};
+int pg_found(int pno)
+{
+	int i;
+	for(i=0;i<3;i++)
+		if(frame[i]==pno)
+		return i;
+	return -1;
+}
+int main()
+{
+	int p_req[]={2,4,5,6,9,4,7,3,4,5,6,7,2,4,7,1};
+	int size=15,page_fault=0,i;
+	
+	printf("\n FIFO page replacement");
+	printf("\n page no  -----------------page frames");
+	printf("\n---------------------------------------");
+	for(i=0;i<size;i++)
+	{
+		if(pg_found(p_req[i])==-1)
+		{
+			frame[page_fault%3]=p_req[i];
+			page_fault++;
+			printf("\n %4d--------------------%4d%4d%4d",p_req[i],frame[0],frame[1],frame[2]);
+		}
+		else
+			printf("\n %4d.......No Page fault",p_req[i]);
+	}
+	printf("\n-------------------------------------------");
+	printf("\n Total page fault=%d",page_fault);
+	
+}
+
+2)
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <dirent.h>
+//#include <bfd.h>
+char comm[100],*ptr;
+char *args[10];
+int tot_arg;
+
+int list( char option, char dirname[]);
+
+main()
+{
+	do
+	{
+		printf("myshell $ ");
+		getcomm();
+		sep_arg();
+		take_action();
+	}while(1);
+} // main
+
+sep_arg()
+{
+	int i,j;
+	i = j = tot_arg = 0;
+
+	args[tot_arg] = (char*)malloc(sizeof(char) * 20);
+	for(i=0; comm[i] !='\0' ; i++)
+	{
+		if( comm[i] == ' ')
+		{
+			args[tot_arg][j] = '\0';
+			tot_arg++;
+			args[tot_arg] = (char*)malloc(sizeof(char) * 20);	
+			j=0;
+		}
+		else
+		{
+			args[tot_arg][j] =comm[i];
+			j++;
+		}
+	} // while
+	args[tot_arg][j] = '\0'; // complete last word
+ 	return;
+}
+
+getcomm()
+{
+	int len;
+	ptr = fgets(comm,80,stdin);
+	len = strlen(comm);
+	comm[len-1] = '\0';
+	return;
+} // getcomm
+
+take_action()
+{
+	char str[100];
+	pid_t   pid;
+	int status;
+
+	if(strcmp(args[0],"list") == 0 )
+		list(*args[1],args[2]);
+	else
+	{	
+		if( ptr == NULL )
+			exit(0);
+		if ( strlen(comm) <= 1 )
+			return;
+		if( ( pid = fork() ) < 0 )
+		{
+			printf("\nUnable to create process");
+		}
+		else
+		if(  pid == 0 ) // child
+		{   sscanf(comm,"%s",comm);
+			execvp(comm,args);
+			strcpy(str,"./");
+			strcat(str,args[0]);
+			execvp(str,args);
+			printf("\n%s : command not found",comm);
+			exit(0);
+		}
+		else //parent
+		 waitpid(pid,&status,0);
+	} // else
+}// take action
+
+int list( char option, char dirname[])
+{
+	DIR *dp;
+	struct dirent *dent;
+	struct stat buff;
+	char orgdir[100];
+	int cnt,reply;
+	getcwd(orgdir,90);
+	chdir(dirname);
+	switch(option)
+	{
+	    case 'f' : // list all dir entries
+			dp= opendir(".");
+			if( dp == NULL )
+			{
+				printf("\nUnable to open dir");
+				exit(0);
+			}
+			dent = readdir(dp);
+			while( dent != NULL )
+			{
+				printf("\n%s",dent->d_name);
+				dent= readdir(dp);
+			}
+			printf("\n");
+			break;
+
+	    case 'i' : // list all dir entries with inode
+			dp= opendir(".");
+			if( dp == NULL )
+			{
+				printf("\nUnable to open dir");
+				exit(0);
+			}
+			dent = readdir(dp);
+			while( dent != NULL )
+			{
+				reply = stat(dent->d_name,&buff);
+				if( reply < 0 )
+				printf("\nError");
+				else
+				printf("\n%s %ld",dent->d_name,buff.st_ino);
+				dent= readdir(dp);
+			}
+			closedir(dp);
+			break;
+	    default :	printf("\nInvalid option");
+			exit(0);
+	} // switch
+	chdir(orgdir);
+	return(0);
+}// main
+
+
